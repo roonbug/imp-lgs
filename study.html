@@ -382,8 +382,7 @@ function runRecall(items,phase,{feedback=false,withConfidence=false,onDone}){
       <div class="row" style="justify-content:flex-end"><button id="go">Submit</button></div>
     </div>`);
     const onset=nowMs();const inp=document.getElementById("ans");inp.focus();
-    inp.addEventListener("keydown",e=>{if(e.key==="Enter")submit();});
-    document.getElementById("go").onclick=submit;
+    document.getElementById("go").onclick=submit;   // Enter handled globally
     let done=false;
     function submit(){
       if(done)return;
@@ -484,8 +483,7 @@ function runEncode(items,phase,onDone){
     </div>`);
     wireAudio();
     const onset=nowMs();const inp=document.getElementById("ans");inp.focus();
-    inp.addEventListener("keydown",e=>{if(e.key==="Enter")submit();});
-    document.getElementById("go").onclick=submit;
+    document.getElementById("go").onclick=submit;   // Enter handled globally
     let recorded=false;
     function submit(){
       const raw=inp.value;const exact=normalize(raw)===normalize(item.ro);
@@ -706,6 +704,17 @@ function startSession2(pid){
   cb.onchange=()=>go.disabled=!cb.checked;
   go.onclick=()=>{STATE.meta.consent_ts=iso();requestFullscreen();startProctoring();startLearning();};
 }
+
+/* Enter submits/advances on every screen: it clicks the enabled primary button
+   (the confidence "Next" #go2 if present, else #go). Skipped when a button is
+   focused (native activation handles it) so it never double-fires. */
+document.addEventListener("keydown",e=>{
+  if(e.key!=="Enter"||e.repeat)return;
+  const ae=document.activeElement;
+  if(ae&&(ae.tagName==="BUTTON"||ae.tagName==="TEXTAREA"))return;
+  const b=document.getElementById("go2")||document.getElementById("go");
+  if(b&&!b.disabled){e.preventDefault();b.click();}
+});
 
 /* ------------------------------- ROUTER ---------------------------------- */
 (function init(){
