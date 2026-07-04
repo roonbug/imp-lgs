@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Japanese Vocabulary Learning Study</title>
+<style>
+  :root{
+    --bg:#0f1220; --panel:#191d33; --panel2:#222741; --ink:#eef1ff; --muted:#a6adcf;
+    --accent:#6c8cff; --accent2:#4ad6b0; --good:#38c172; --bad:#ff6b6b; --line:#2c3357;
+    --radius:16px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    background:radial-gradient(1200px 700px at 70% -10%, #23294a 0%, var(--bg) 60%);
+    color:var(--ink); font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased; overflow-x:hidden;
+  }
+  #app{max-width:820px;margin:0 auto;padding:28px 20px 80px;min-height:100%}
+  .card{background:linear-gradient(180deg,var(--panel) 0%,#151932 100%);border:1px solid var(--line);
+    border-radius:var(--radius);padding:28px;box-shadow:0 20px 50px rgba(0,0,0,.35)}
+  h1{font-size:26px;margin:0 0 6px;letter-spacing:.2px}
+  h2{font-size:20px;margin:0 0 14px}
+  p{color:var(--muted)}
+  .lead{color:var(--ink)}
+  .kicker{color:var(--accent2);font-weight:700;text-transform:uppercase;letter-spacing:2px;font-size:12px}
+  .row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+  .spacer{height:16px}
+  label.field{display:block;margin:14px 0 6px;color:var(--muted);font-size:14px}
+  input[type=text],input[type=number],select{
+    width:100%;padding:12px 14px;border-radius:12px;border:1px solid var(--line);
+    background:var(--panel2);color:var(--ink);font-size:16px;outline:none}
+  input:focus,select:focus{border-color:var(--accent)}
+  button{
+    appearance:none;border:0;border-radius:12px;padding:13px 22px;font-size:16px;font-weight:600;
+    background:var(--accent);color:#0b0e1c;cursor:pointer;transition:transform .05s ease,filter .15s ease}
+  button:hover{filter:brightness(1.08)}
+  button:active{transform:translateY(1px)}
+  button.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+  button:disabled{opacity:.4;cursor:not-allowed}
+  .audiobtn{background:var(--panel2);color:var(--ink);border:1px solid var(--line);
+    padding:9px 16px;font-size:15px;font-weight:600;border-radius:99px}
+  .audiobtn:hover{border-color:var(--accent2);filter:none}
+  .checkbox{display:flex;gap:12px;align-items:flex-start;margin:18px 0;padding:14px;border:1px solid var(--line);border-radius:12px;background:var(--panel2)}
+  .checkbox input{margin-top:4px;width:20px;height:20px}
+  .progress{height:8px;background:var(--panel2);border-radius:99px;overflow:hidden;margin:0 0 22px}
+  .progress > i{display:block;height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));width:0;transition:width .3s ease}
+  .stimword{font-size:44px;font-weight:800;text-align:center;margin:10px 0}
+  .romaji{font-size:34px;font-weight:800;text-align:center;color:var(--accent2);letter-spacing:1px}
+  .imgwrap{display:flex;justify-content:center;margin:8px 0 6px}
+  .imgwrap img{max-height:280px;max-width:100%;border-radius:14px;border:1px solid var(--line);background:#fff}
+  .avatar{width:220px;height:220px;border-radius:18px;display:flex;align-items:center;justify-content:center;
+    font-size:96px;font-weight:800;color:#0b0e1c;background:linear-gradient(135deg,var(--accent),var(--accent2))}
+  .center{text-align:center}
+  .muted{color:var(--muted)}
+  .big-input{font-size:24px;text-align:center;padding:16px}
+  .choices{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px}
+  .choice{padding:16px;border:1px solid var(--line);border-radius:12px;background:var(--panel2);cursor:pointer;
+    font-size:20px;text-align:center;font-weight:600;transition:border-color .1s,background .1s}
+  .choice:hover{border-color:var(--accent)}
+  .choice.sel{border-color:var(--accent);background:#26315e}
+  .choice.correct{border-color:var(--good);background:rgba(56,193,114,.18);color:#c9f7da}
+  .choice.wrong{border-color:var(--bad);background:rgba(255,107,107,.15);color:#ffc9c9}
+  .choice.reveal{cursor:default}
+  .slider{width:100%}
+  .feedback{margin-top:18px;padding:14px 16px;border-radius:12px;font-weight:600;text-align:center}
+  .feedback.good{background:rgba(56,193,114,.15);color:#8ff0b6;border:1px solid rgba(56,193,114,.4)}
+  .feedback.bad{background:rgba(255,107,107,.12);color:#ffb3b3;border:1px solid rgba(255,107,107,.4)}
+  .pill{display:inline-block;padding:4px 10px;border-radius:99px;background:var(--panel2);border:1px solid var(--line);font-size:12px;color:var(--muted)}
+  .code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:#0b0e1c;border:1px solid var(--line);
+    padding:10px 12px;border-radius:10px;word-break:break-all;color:var(--accent2)}
+  .banner{position:fixed;left:0;right:0;top:0;background:var(--bad);color:#fff;text-align:center;padding:10px;font-weight:700;z-index:50;display:none}
+  ul.clean{color:var(--muted)} ul.clean li{margin:6px 0}
+  .stat{display:flex;gap:18px;flex-wrap:wrap;margin:10px 0}
+  .stat .box{flex:1;min-width:120px;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:14px;text-align:center}
+  .stat .box b{display:block;font-size:26px}
+  a{color:var(--accent)}
+</style>
+</head>
+<body>
+  <div class="banner" id="banner"></div>
+  <div id="app"></div>
+
+<script>
+"use strict";
+/* ============================================================================
+   JAPANESE VOCABULARY MEMORIZATION TRAINER  —  self-contained learning tool
+   Goal: help the participant MEMORIZE the words. Built on evidence-based
+   memory techniques — study (dual coding: word + picture), retrieval practice
+   with feedback (the testing effect), and spaced repeated exposure — then a
+   final self-check. Interaction data (responses, RTs, JOL/confidence) are still
+   logged for records. Seeded randomization for reproducibility.
+   ========================================================================== */
+
+/* ------------------------------- CONFIG ---------------------------------- */
+const CONFIG = {
+  STUDY_VERSION: "2.0.0",
+  // --- Data destination ---------------------------------------------------
+  // DEPLOYMENT (GitHub Pages -> OSF): paste the DataPipe experiment ID that is
+  // linked to your OSF project. DataPipe (https://pipe.jspsych.org) holds the OSF
+  // token server-side and writes each submission as a file into your OSF project,
+  // so no secret is ever exposed in this public page. Leave "" for local testing.
+  DATAPIPE_EXPERIMENT_ID: "MEer4dgpnH5j",          // e.g. "a1B2c3D4e5F6"
+  DATAPIPE_URL: "https://pipe.jspsych.org/api/data/",
+  // LOCAL DEV: when DATAPIPE_EXPERIMENT_ID is empty, POST here (server.py).
+  ENDPOINT_URL: "/api/data",
+  LEARN_MAX_ROUNDS: 5,       // max rounds before we stop and move on regardless
+  MASTERY_CONSECUTIVE: 2,    // consecutive 100% typed-recall rounds = mastery (then offer exit)
+  N_MCQ_OPTIONS: 4,          // options in the multiple-choice recall
+  RECALL_EDIT_TOLERANCE: 1,  // Levenshtein distance still scored correct (len>=4)
+  REQUIRE_FULLSCREEN: true,  // request + monitor fullscreen
+  AUTO_DOWNLOAD_ON_FAIL: true
+};
+
+/* --------------------------- STIMULUS TABLE ------------------------------ */
+/* english, romaji, category, image filename (null => text/avatar card).
+   Mirrors list.txt. Jon/Mia have no image (proper names). */
+const ITEMS = [
+  {id:1,  en:"Jon",        ro:"Jon",      cat:"name",    img:null},
+  {id:2,  en:"Mia",        ro:"Mia",      cat:"name",    img:null},
+  {id:3,  en:"he",         ro:"kare",     cat:"pronoun", img:"he.jpg"},
+  {id:4,  en:"she",        ro:"kanojo",   cat:"pronoun", img:"she.png"},
+  {id:5,  en:"apple",      ro:"ringo",    cat:"food",    img:"apple.png"},
+  {id:6,  en:"egg",        ro:"tamago",   cat:"food",    img:"egg.png"},
+  {id:7,  en:"rice",       ro:"gohan",    cat:"food",    img:"rice.jpg"},
+  {id:8,  en:"cake",       ro:"keeki",    cat:"food",    img:"cake.jpg"},
+  {id:9,  en:"meat",       ro:"niku",     cat:"food",    img:"meat.png"},
+  {id:10, en:"fish",       ro:"sakana",   cat:"food",    img:"fish.jpg"},
+  {id:11, en:"chicken",    ro:"toriniku", cat:"food",    img:"chicken.jpg"},
+  {id:12, en:"strawberry", ro:"ichigo",   cat:"food",    img:"strawberry.png"},
+  {id:13, en:"carrot",     ro:"ninjin",   cat:"food",    img:"carrot.jpg"},
+  {id:14, en:"book",       ro:"hon",      cat:"object",  img:"book.jpg"},
+  {id:15, en:"box",        ro:"hako",     cat:"object",  img:"box.jpg"},
+  {id:16, en:"chair",      ro:"isu",      cat:"object",  img:"chair.jpg"},
+  {id:17, en:"stone",      ro:"ishi",     cat:"object",  img:"stone.png"},
+  {id:18, en:"bag",        ro:"kaban",    cat:"object",  img:"bag.jpg"},
+  {id:19, en:"key",        ro:"kagi",     cat:"object",  img:"key.jpg"},
+  {id:20, en:"clock",      ro:"tokei",    cat:"object",  img:"clock.jpg"},
+  {id:21, en:"shoe",       ro:"kutsu",    cat:"object",  img:"shoe.jpg"},
+  {id:22, en:"umbrella",   ro:"kasa",     cat:"object",  img:"umbrella.jpg"},
+  {id:24, en:"see",        ro:"miru",     cat:"verb",    img:"see.jpg"},
+  {id:25, en:"move",       ro:"ugokasu",  cat:"verb",    img:"move.jpg"},
+  {id:26, en:"carry",      ro:"hakobu",   cat:"verb",    img:"carry.jpg"},
+  {id:27, en:"take",       ro:"toru",     cat:"verb",    img:"take.jpg"}
+];
+
+/* ------------------------------ UTILITIES -------------------------------- */
+// Deterministic PRNG (mulberry32) seeded per participant for reproducibility.
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);
+  t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+function hashStr(s){let h=2166136261>>>0;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return h>>>0;}
+let RNG = Math.random; // replaced once participant id is known
+function shuffle(arr){const a=arr.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(RNG()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+function sample(arr,n){return shuffle(arr).slice(0,n);}
+function nowMs(){return performance.now();}
+function iso(){return new Date().toISOString();}
+
+// Normalization + Levenshtein for typo-tolerant recall scoring.
+function normalize(s){
+  return (s||"").toLowerCase().trim()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g,"") // strip macrons/accents
+    .replace(/[^a-z]/g,"");                            // keep letters only
+}
+function levenshtein(a,b){
+  const m=a.length,n=b.length;if(!m)return n;if(!n)return m;
+  const d=Array.from({length:m+1},(_,i)=>[i,...Array(n).fill(0)]);
+  for(let j=0;j<=n;j++)d[0][j]=j;
+  for(let i=1;i<=m;i++)for(let j=1;j<=n;j++){
+    const c=a[i-1]===b[j-1]?0:1;
+    d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+c);
+  }
+  return d[m][n];
+}
+function scoreRecall(response,target){
+  const r=normalize(response),t=normalize(target);
+  const ed=levenshtein(r,t);
+  let correct=(r===t);
+  if(!correct && t.length>=4 && ed<=CONFIG.RECALL_EDIT_TOLERANCE) correct=true;
+  return {response_normalized:r,edit_distance:ed,correct};
+}
+
+/* ------------------------------- STATE ----------------------------------- */
+const STATE = {
+  session:1,
+  meta:{},                 // participant-level metadata
+  trials:[],               // per-trial records
+  events:[],               // proctoring events
+  conditionMap:{},         // item id -> "image" | "text"
+  seed:0,
+  lastSeenTrial:{},        // item id -> global trial counter (spacing lag)
+  trialCounter:0
+};
+
+/* ----------------------------- PROCTORING -------------------------------- */
+const PROCTOR = {
+  active:false, offscreenSince:null, totalOffscreenMs:0,
+  counts:{blur:0,visibility_hidden:0,fullscreen_exit:0,paste:0,copy:0,cut:0,contextmenu:0},
+  focusLost:false,           // set true if focus lost during the current trial
+  currentPhase:"init"
+};
+function logEvent(type,details){
+  STATE.events.push({event_type:type,ts:iso(),t_ms:Math.round(nowMs()),phase:PROCTOR.currentPhase,details:details||null});
+  if(PROCTOR.counts[type]!==undefined)PROCTOR.counts[type]++;
+}
+function startProctoring(){
+  if(PROCTOR.active)return; PROCTOR.active=true;
+  document.addEventListener("visibilitychange",()=>{
+    if(document.hidden){PROCTOR.offscreenSince=nowMs();PROCTOR.focusLost=true;logEvent("visibility_hidden");}
+    else{if(PROCTOR.offscreenSince){PROCTOR.totalOffscreenMs+=nowMs()-PROCTOR.offscreenSince;PROCTOR.offscreenSince=null;}logEvent("visibility_visible");}
+  });
+  window.addEventListener("blur",()=>{PROCTOR.focusLost=true;logEvent("blur");});
+  window.addEventListener("focus",()=>logEvent("focus"));
+  document.addEventListener("fullscreenchange",()=>{
+    if(!document.fullscreenElement){logEvent("fullscreen_exit");if(CONFIG.REQUIRE_FULLSCREEN)flashBanner("Please stay in full-screen during the study.");}
+    else logEvent("fullscreen_enter");
+  });
+  ["paste","copy","cut"].forEach(ev=>document.addEventListener(ev,e=>{e.preventDefault();logEvent(ev);flashBanner("Copy / paste is disabled during the study.");}));
+  document.addEventListener("contextmenu",e=>{e.preventDefault();logEvent("contextmenu");});
+  window.addEventListener("resize",()=>logEvent("resize",{w:window.innerWidth,h:window.innerHeight}));
+  window.addEventListener("beforeunload",e=>{if(PROCTOR.active){e.preventDefault();e.returnValue="";}});
+}
+function requestFullscreen(){const el=document.documentElement;if(CONFIG.REQUIRE_FULLSCREEN&&el.requestFullscreen)el.requestFullscreen().catch(()=>{});}
+let bannerTimer=null;
+function flashBanner(msg){const b=document.getElementById("banner");b.textContent=msg;b.style.display="block";clearTimeout(bannerTimer);bannerTimer=setTimeout(()=>b.style.display="none",2600);}
+function integritySummary(){
+  return {total_offscreen_ms:Math.round(PROCTOR.totalOffscreenMs),counts:{...PROCTOR.counts},n_events:STATE.events.length};
+}
+
+/* ------------------------- TRIAL RECORD HELPER --------------------------- */
+function pushTrial(rec){
+  STATE.trialCounter++;
+  const item=rec.item||{};
+  const lag = STATE.lastSeenTrial[item.id]!==undefined ? STATE.trialCounter-STATE.lastSeenTrial[item.id] : null;
+  if(item.id!==undefined) STATE.lastSeenTrial[item.id]=STATE.trialCounter;
+  STATE.trials.push({
+    participant_id:STATE.meta.participant_id, session:STATE.session, study_version:CONFIG.STUDY_VERSION,
+    phase:rec.phase, block:rec.block??null, trial_index:STATE.trialCounter,
+    item_id:item.id??null, english:item.en??null, romaji:item.ro??null, category:item.cat??null,
+    condition:item.id!==undefined?(STATE.conditionMap[item.id]||null):null, has_image:item.img?true:false,
+    test_type:rec.test_type, direction:rec.direction||"en2ro",
+    prompt_onset_ts:rec.onset??null, response_ts:rec.rts??null, rt_ms:rec.rt_ms??null,
+    response_raw:rec.response_raw??null, response_normalized:rec.response_normalized??null,
+    correct:rec.correct??null, edit_distance:rec.edit_distance??null,
+    confidence_or_jol:rec.conf??null, mcq_options:rec.mcq_options??null, mcq_choice:rec.mcq_choice??null,
+    spacing_lag:lag, focus_lost_during_trial:rec.focus_lost??false, timestamp_iso:iso()
+  });
+}
+
+/* --------------------------- CONDITION ASSIGN ---------------------------- */
+// Within-subject dual-coding IV: half of the imageable items -> image, half -> text.
+// Balanced within each semantic category. Jon/Mia (no image) forced to text.
+function assignConditions(){
+  const byCat={};
+  ITEMS.forEach(it=>{(byCat[it.cat]=byCat[it.cat]||[]).push(it);});
+  Object.values(byCat).forEach(list=>{
+    const imageable=shuffle(list.filter(it=>it.img));
+    imageable.forEach((it,i)=>{STATE.conditionMap[it.id]=(i%2===0)?"image":"text";});
+    list.filter(it=>!it.img).forEach(it=>{STATE.conditionMap[it.id]="text";});
+  });
+}
+
+/* ------------------------------- RENDER ---------------------------------- */
+const app=()=>document.getElementById("app");
+function render(html){app().innerHTML=html;window.scrollTo(0,0);}
+function progressBar(frac){return `<div class="progress"><i style="width:${Math.round(frac*100)}%"></i></div>`;}
+function stimVisual(item){
+  // Memorization tool: always show the picture when one exists; the two proper
+  // names (Jon/Mia) have no image and fall back to a letter card.
+  if(item.img) return `<div class="imgwrap"><img src="img/${item.img}" alt=""></div>`;
+  return `<div class="imgwrap"><div class="avatar">${item.en[0].toUpperCase()}</div></div>`;
+}
+// Native-pronunciation audio (auto-plays on appear + a manual replay button).
+// Used only on study/feedback cards — never on test prompts (would leak answers).
+function audioBlock(item){
+  return `<audio id="wordaudio" src="audio/${item.en.toLowerCase()}.mp3" preload="auto"></audio>
+    <div class="row" style="justify-content:center;margin-top:4px">
+      <button type="button" class="audiobtn" id="playaudio" aria-label="Play pronunciation">🔊 Play pronunciation</button>
+    </div>`;
+}
+function wireAudio(){
+  const au=document.getElementById("wordaudio"); if(!au) return;
+  const play=()=>{ try{ au.currentTime=0; const p=au.play(); if(p&&p.catch) p.catch(()=>{}); }catch(e){} };
+  const btn=document.getElementById("playaudio"); if(btn) btn.onclick=play;
+  play(); // autoplay; browsers allow it because the participant has already clicked to get here
+}
+
+/* =============================== SCREENS ================================== */
+
+function screenConsent(){
+  PROCTOR.currentPhase="consent";
+  render(`<div class="card">
+    <div class="kicker">Vocabulary Trainer</div>
+    <h1>Learn &amp; Memorize Japanese Words</h1>
+    <p class="lead">This activity will help you memorize a set of Japanese words (written in romaji).
+    You'll study each word, practice it with feedback, and then check what you remember.
+    The session takes about 15–20 minutes.</p>
+    <ul class="clean">
+      <li><b>Voluntary:</b> you may stop at any time by closing the window.</li>
+      <li><b>Data recorded:</b> your answers, response times, and interaction events
+      (e.g., switching away from this tab or leaving full-screen). <b>No video or audio is recorded.</b></li>
+      <li><b>Confidentiality:</b> data are identified only by a random participant code.</li>
+      <li><b>Integrity monitoring:</b> to keep the test fair, the page logs full-screen exits,
+      tab switches, and copy/paste attempts. Please do not look up answers.</li>
+    </ul>
+    <div class="checkbox"><input type="checkbox" id="consent"><label for="consent">
+      I am 18 or older, I have read the above, and I consent to participate.</label></div>
+    <button id="go" disabled>Begin</button>
+  </div>`);
+  const cb=document.getElementById("consent"),go=document.getElementById("go");
+  cb.onchange=()=>go.disabled=!cb.checked;
+  go.onclick=()=>{STATE.meta.consent_ts=iso();screenInstructions();};
+}
+
+function screenInstructions(){
+  PROCTOR.currentPhase="instructions";
+  render(`<div class="card">
+    <div class="kicker">Before you start</div>
+    <h1>How it works</h1>
+    <ol class="clean" style="color:var(--muted)">
+      <li><b>Study</b> — you learn each English word with its Japanese (romaji) form, most with a picture.</li>
+      <li><b>Practice rounds</b> — short quizzes with feedback that help the words stick.</li>
+      <li><b>Final check</b> — typing and multiple-choice, to see what you've memorized.</li>
+    </ol>
+    <p>Please close other tabs, silence notifications, and remain in full-screen. Do not look up answers.</p>
+    <button id="go">Enter full-screen &amp; start</button>
+  </div>`);
+  document.getElementById("go").onclick=()=>{requestFullscreen();startProctoring();screenDemographics();};
+}
+
+function screenDemographics(){
+  PROCTOR.currentPhase="demographics";
+  const pid = STATE.meta.participant_id || ("P"+Math.random().toString(36).slice(2,8).toUpperCase());
+  render(`<div class="card">
+    <div class="kicker">Participant</div>
+    <h1>A few quick questions</h1>
+    <label class="field">Participant code (auto-generated — keep it to return later)</label>
+    <input type="text" id="pid" value="${pid}">
+    <label class="field">Age</label>
+    <input type="number" id="age" min="18" max="120" placeholder="e.g. 27">
+    <label class="field">Native language</label>
+    <input type="text" id="lang" placeholder="e.g. English">
+    <label class="field">Prior experience with Japanese</label>
+    <select id="prior">
+      <option value="none">None at all</option>
+      <option value="little">A little (a few words)</option>
+      <option value="some">Some (studied briefly)</option>
+      <option value="lots">Substantial</option>
+    </select>
+    <div class="spacer"></div>
+    <button id="go">Continue</button>
+  </div>`);
+  document.getElementById("go").onclick=()=>{
+    STATE.meta.participant_id=document.getElementById("pid").value.trim()||pid;
+    STATE.meta.age=document.getElementById("age").value||null;
+    STATE.meta.native_language=document.getElementById("lang").value.trim()||null;
+    STATE.meta.prior_japanese=document.getElementById("prior").value;
+    // Seed RNG from participant id -> reproducible randomization & condition map.
+    STATE.seed=hashStr(STATE.meta.participant_id); RNG=mulberry32(STATE.seed);
+    STATE.meta.randomization_seed=STATE.seed;
+    assignConditions();
+    STATE.meta.condition_assignment_map={...STATE.conditionMap};
+    startLearning();       // no warm-up: go straight into the learn-and-quiz rounds
+  };
+}
+
+/* --------- Generic typed-recall runner (used by the final recall test) ----- */
+function runRecall(items,phase,{feedback=false,withConfidence=false,onDone}){
+  const seq=shuffle(items); let i=0;
+  function trial(){
+    if(i>=seq.length){onDone();return;}
+    const item=seq[i]; PROCTOR.focusLost=false;
+    render(`<div class="card">
+      ${progressBar(i/seq.length)}
+      <div class="center muted">Type from memory · ${i+1} / ${seq.length}</div>
+      <p class="center">Type the Japanese (romaji) for:</p>
+      <div class="stimword">${item.en}</div>
+      <input type="text" id="ans" class="big-input" autocomplete="off" autocorrect="off"
+        autocapitalize="off" spellcheck="false" placeholder="type here…">
+      <div class="spacer"></div>
+      <div id="cbox"></div>
+      <div class="row" style="justify-content:flex-end"><button id="go">Submit</button></div>
+    </div>`);
+    const onset=nowMs();const inp=document.getElementById("ans");inp.focus();
+    inp.addEventListener("keydown",e=>{if(e.key==="Enter")submit();});
+    document.getElementById("go").onclick=submit;
+    let done=false;
+    function submit(){
+      if(done)return;
+      const raw=inp.value;
+      if(withConfidence){askConfidence(raw);return;}
+      finalize(raw,null);
+    }
+    function askConfidence(raw){
+      done=true;
+      render(`<div class="card">
+        ${progressBar((i+0.5)/seq.length)}
+        <p class="center">How confident are you that <b>“${raw||"(blank)"}”</b> is correct?</p>
+        <div class="center muted">${item.en}</div>
+        <div class="spacer"></div>
+        <input type="range" min="0" max="100" value="50" id="conf" class="slider">
+        <div class="row" style="justify-content:space-between"><span class="muted">Not at all</span><span class="muted">Certain</span></div>
+        <div class="spacer"></div>
+        <div class="row" style="justify-content:flex-end"><button id="go2">Next</button></div>
+      </div>`);
+      document.getElementById("go2").onclick=()=>finalize(raw,parseInt(document.getElementById("conf").value,10));
+    }
+    function finalize(raw,conf){
+      done=true;
+      const sc=scoreRecall(raw,item.ro);const rt=Math.round(nowMs()-onset);
+      pushTrial({phase,test_type:"recall",item,onset:Math.round(onset),rts:Math.round(nowMs()),
+        rt_ms:rt,response_raw:raw,response_normalized:sc.response_normalized,correct:sc.correct,
+        edit_distance:sc.edit_distance,conf,focus_lost:PROCTOR.focusLost});
+      if(feedback){showRecallFeedback(item,sc,raw,()=>{i++;trial();});}
+      else{i++;trial();}
+    }
+  }
+  trial();
+}
+function showRecallFeedback(item,sc,raw,next){
+  const yours=(raw&&raw.trim())?raw.trim():"(blank)";
+  render(`<div class="card">
+    ${stimVisual(item,false)}
+    <div class="stimword">${item.en}</div>
+    <div class="romaji">${item.ro}</div>
+    <div class="feedback ${sc.correct?"good":"bad"}">${sc.correct
+      ?"Correct!"
+      :"You typed “"+yours+"” — the answer is “"+item.ro+"”"}</div>
+    ${audioBlock(item)}
+    <div class="spacer"></div>
+    <div class="row" style="justify-content:flex-end"><button id="go">Continue</button></div>
+  </div>`);
+  wireAudio();
+  document.getElementById("go").onclick=next;
+}
+
+/* ===================== LEARNING LOOP (mastery-based) ======================
+   Each round has three passes over the full set:
+     1. INTRODUCE  — type the word while you see it (romaji shown) and hear it.
+     2. MULTIPLE-CHOICE — pick the romaji for the word (recognition practice).
+     3. TYPED RECALL — type the romaji from memory (no romaji/audio shown). This
+        is the graded gate.
+   Rounds auto-repeat until the TYPED RECALL scores 100% on MASTERY_CONSECUTIVE
+   rounds in a row (then the participant may exit or keep rehearsing), or until the
+   LEARN_MAX_ROUNDS cap. Session 1 and the day-2 return use the same flow. */
+function startLearning(){
+  PROCTOR.currentPhase="learn_intro";
+  render(`<div class="card"><div class="kicker">Learn the words</div><h1>Study &amp; quiz</h1>
+    <p>Each round you'll <b>type each word as you see and hear it</b>, take a quick
+    <b>multiple-choice</b> quiz, then <b>type the words from memory</b>. We repeat until you
+    can type them all correctly ${CONFIG.MASTERY_CONSECUTIVE} rounds in a row
+    (up to ${CONFIG.LEARN_MAX_ROUNDS} rounds).</p>
+    <button id="go">Start</button></div>`);
+  document.getElementById("go").onclick=()=>beginRound(1,0);
+}
+// round = 1-based; consec = how many consecutive prior rounds hit 100% typed recall.
+function beginRound(round,consec){
+  const introP="learn_round_"+round, testP="test_round_"+round;
+  runEncode(ITEMS,introP,()=>
+    runRecognition(ITEMS,introP,()=>
+      runRecall(ITEMS,testP,{feedback:true,withConfidence:false,
+        onDone:()=>afterRound(round,consec,testP)})));
+}
+// "Type what you see and hear": word + picture + romaji + audio are shown; the
+// participant types the romaji (an encoding exercise, so the answer is visible).
+function runEncode(items,phase,onDone){
+  PROCTOR.currentPhase=phase+"_introduce";
+  const seq=shuffle(items);let i=0;
+  function trial(){
+    if(i>=seq.length){onDone();return;}
+    const item=seq[i];PROCTOR.focusLost=false;
+    render(`<div class="card">
+      ${progressBar(i/seq.length)}
+      <div class="center muted">Type what you see &amp; hear · ${i+1} / ${seq.length}</div>
+      ${stimVisual(item,false)}
+      <div class="stimword">${item.en}</div>
+      <div class="romaji">${item.ro}</div>
+      ${audioBlock(item)}
+      <input type="text" id="ans" class="big-input" autocomplete="off" autocorrect="off"
+        autocapitalize="off" spellcheck="false" placeholder="type the romaji you see…">
+      <div id="ehint"></div>
+      <div class="spacer"></div>
+      <div class="row" style="justify-content:flex-end"><button id="go">Next</button></div>
+    </div>`);
+    wireAudio();
+    const onset=nowMs();const inp=document.getElementById("ans");inp.focus();
+    inp.addEventListener("keydown",e=>{if(e.key==="Enter")submit();});
+    document.getElementById("go").onclick=submit;
+    let recorded=false;
+    function submit(){
+      const raw=inp.value;const exact=normalize(raw)===normalize(item.ro);
+      if(!recorded){                                   // log the first copy attempt
+        recorded=true;
+        const sc=scoreRecall(raw,item.ro);const rt=Math.round(nowMs()-onset);
+        pushTrial({phase,test_type:"introduce",item,onset:Math.round(onset),rts:Math.round(nowMs()),rt_ms:rt,
+          response_raw:raw,response_normalized:sc.response_normalized,correct:sc.correct,
+          edit_distance:sc.edit_distance,focus_lost:PROCTOR.focusLost});
+      }
+      if(exact){ i++; trial(); }                       // must match to advance
+      else {
+        document.getElementById("ehint").innerHTML=
+          `<div class="feedback bad">That doesn't match — type it exactly as shown: “${item.ro}”.</div>`;
+        inp.focus(); inp.select();
+      }
+    }
+  }
+  trial();
+}
+// Score this round's TYPED-RECALL pass and branch (auto-continue / mastery / cap).
+function afterRound(round,consec,testP){
+  PROCTOR.currentPhase="round_result";
+  const rec=STATE.trials.filter(t=>t.phase===testP&&t.test_type==="recall");
+  const correct=rec.filter(t=>t.correct).length, total=rec.length;
+  const pct=total?Math.round(100*correct/total):0;
+  const newConsec = pct===100 ? consec+1 : 0;
+  const mastered = newConsec>=CONFIG.MASTERY_CONSECUTIVE;
+  const cap = round>=CONFIG.LEARN_MAX_ROUNDS;
+  const finish=()=>finishSession(STATE.session===1
+      ? "Thank you! You've completed today's session."
+      : "Thank you! You've completed the day-2 session.");
+  let buttons, msg;
+  if(mastered){
+    msg=`You've typed every word correctly ${newConsec} rounds in a row — you've got these! `
+       +`You can finish now, or keep rehearsing if you'd like.`;
+    buttons=`<button id="more" class="ghost">Keep rehearsing</button>
+             <button id="go">Finish</button>`;
+  }else if(cap){
+    msg=`That was the last round. Let's wrap up.`;
+    buttons=`<button id="go">Finish</button>`;
+  }else{
+    msg=(pct===100)?`Perfect this round! Do it once more to lock it in.`
+                   :`Let's run through them again to lock them in.`;
+    buttons=`<button id="go">Next round (${round+1} of ${CONFIG.LEARN_MAX_ROUNDS})</button>`;
+  }
+  render(`<div class="card">
+    <div class="kicker">Round ${round} complete</div>
+    <h1>${pct===100?"Perfect! 🎉":"Nice work"}</h1>
+    <div class="stat"><div class="box"><b>${pct}%</b><span class="muted">typed recall (${correct}/${total})</span></div></div>
+    <p>${msg}</p>
+    <div class="spacer"></div>
+    <div class="row" style="justify-content:flex-end">${buttons}</div>
+  </div>`);
+  if(mastered){
+    document.getElementById("go").onclick=finish;
+    document.getElementById("more").onclick=()=>beginRound(round+1,newConsec);
+  }else if(cap){
+    document.getElementById("go").onclick=finish;
+  }else{
+    document.getElementById("go").onclick=()=>beginRound(round+1,newConsec);
+  }
+}
+
+/* ----------------------- RECOGNITION (MCQ) runner ------------------------ */
+function runRecognition(items,phase,onDone){
+  PROCTOR.currentPhase=phase+"_recognition";
+  const seq=shuffle(items);let i=0;
+  function trial(){
+    if(i>=seq.length){onDone();return;}
+    const item=seq[i];PROCTOR.focusLost=false;
+    const sameCat=ITEMS.filter(x=>x.cat===item.cat&&x.id!==item.id);
+    const pool=sameCat.length>=CONFIG.N_MCQ_OPTIONS-1?sameCat:ITEMS.filter(x=>x.id!==item.id);
+    const distract=sample(pool,CONFIG.N_MCQ_OPTIONS-1).map(x=>x.ro);
+    const options=shuffle([item.ro,...distract]);
+    render(`<div class="card">
+      ${progressBar(i/seq.length)}
+      <div class="center muted">Multiple choice · ${i+1} / ${seq.length}</div>
+      ${stimVisual(item,false)}
+      <p class="center">Which is the Japanese (romaji) for <b>${item.en}</b>?</p>
+      <div class="choices" id="choices">
+        ${options.map((o,k)=>`<div class="choice" data-k="${k}" data-v="${o}">${o}</div>`).join("")}
+      </div>
+      <div id="fb"></div>
+      <div class="spacer"></div>
+      <div class="row" style="justify-content:flex-end"><button id="go" disabled>Submit</button></div>
+    </div>`);
+    const onset=nowMs();let chosen=null,revealed=false;
+    document.querySelectorAll(".choice").forEach(el=>el.onclick=()=>{
+      if(revealed)return;
+      document.querySelectorAll(".choice").forEach(c=>c.classList.remove("sel"));
+      el.classList.add("sel");chosen=el.dataset.v;document.getElementById("go").disabled=false;
+    });
+    const go=document.getElementById("go");
+    go.onclick=()=>{
+      if(!revealed){                                   // first click: grade + show feedback
+        revealed=true;
+        const rt=Math.round(nowMs()-onset);const correct=chosen===item.ro;
+        pushTrial({phase,test_type:"recognition",item,onset:Math.round(onset),rts:Math.round(nowMs()),rt_ms:rt,
+          response_raw:chosen,correct,mcq_options:options,mcq_choice:chosen,focus_lost:PROCTOR.focusLost});
+        document.querySelectorAll(".choice").forEach(c=>{
+          c.classList.add("reveal");
+          if(c.dataset.v===item.ro)c.classList.add("correct");
+          else if(c.dataset.v===chosen)c.classList.add("wrong");
+        });
+        document.getElementById("fb").innerHTML=
+          `<div class="feedback ${correct?"good":"bad"}">${correct?"Correct!":"Correct answer: “"+item.ro+"”"}</div>`
+          +audioBlock(item);
+        wireAudio();
+        go.textContent="Continue";
+      }else{                                            // second click: advance
+        i++;trial();
+      }
+    };
+  }
+  trial();
+}
+
+/* ------------------------- SESSION COMPLETION ---------------------------- */
+function summarize(){
+  const t=STATE.trials;
+  // typed-recall gate phases, ordered by round number
+  const testPhases=[...new Set(t.filter(x=>x.test_type==="recall"&&/^test_round_\d+$/.test(x.phase||"")).map(x=>x.phase))]
+    .sort((a,b)=>(+a.match(/\d+$/))-(+b.match(/\d+$/)));
+  const scoreOf=ph=>{const r=t.filter(x=>x.phase===ph&&x.test_type==="recall");
+    return r.length?Math.round(100*r.filter(y=>y.correct).length/r.length):0;};
+  const recallAcc=testPhases.length?scoreOf(testPhases[testPhases.length-1]):0; // last round
+  const best=testPhases.reduce((m,ph)=>Math.max(m,scoreOf(ph)),0);
+  return {recallAcc,rounds:testPhases.length,best};
+}
+
+function finishSession(headline){
+  PROCTOR.currentPhase="debrief";PROCTOR.active=false; // stop beforeunload warning
+  const s=summarize();
+  const url=new URL(window.location.href);
+  url.searchParams.set("session","2");url.searchParams.set("pid",STATE.meta.participant_id);
+  const s2link=url.toString();
+  render(`<div class="card">
+    <div class="kicker">Complete</div><h1>${headline}</h1>
+    <div class="stat">
+      <div class="box"><b>${s.recallAcc}%</b><span class="muted">Last typed recall</span></div>
+      <div class="box"><b>${s.best}%</b><span class="muted">Best typed round</span></div>
+      <div class="box"><b>${s.rounds}</b><span class="muted">Rounds</span></div>
+    </div>
+    <div id="status" class="muted">Saving your data…</div>
+    <div class="spacer"></div>
+    ${STATE.session===1?`
+      <h2>Come back tomorrow (day 2)</h2>
+      <p>Please return tomorrow to learn the words again — it's the same process. Use your code
+      <span class="code">${STATE.meta.participant_id}</span> and this link:</p>
+      <div class="code">${s2link}</div>`:""}
+    <div class="spacer"></div>
+    <div class="row"><button id="dl" class="ghost">Download my data</button></div>
+  </div>`);
+  document.getElementById("dl").onclick=()=>downloadData();
+  uploadData();
+}
+
+/* --------------------------- DATA UPLOAD/SAVE ---------------------------- */
+function buildPayload(){
+  return {
+    participant_id:STATE.meta.participant_id, session:STATE.session, study_version:CONFIG.STUDY_VERSION,
+    submitted_iso:iso(), meta:{...STATE.meta,user_agent:navigator.userAgent,
+      screen:{w:window.screen.width,h:window.screen.height,dpr:window.devicePixelRatio},
+      integrity_summary:integritySummary()},
+    trials:STATE.trials, proctor_events:STATE.events
+  };
+}
+function dataFilename(){
+  const ts=iso().replace(/[:.]/g,"-");                // OSF-safe (no colons/dots besides ext)
+  return `${STATE.meta.participant_id}_s${STATE.session}_${ts}.json`;
+}
+async function uploadData(){
+  const status=document.getElementById("status");const payload=buildPayload();
+  const expId=(CONFIG.DATAPIPE_EXPERIMENT_ID||"").trim();
+  try{
+    let res;
+    if(expId){                                        // GitHub Pages -> DataPipe -> OSF
+      res=await fetch(CONFIG.DATAPIPE_URL,{method:"POST",
+        headers:{"Content-Type":"application/json","Accept":"*/*"},
+        body:JSON.stringify({experimentID:expId,filename:dataFilename(),data:JSON.stringify(payload)})});
+    }else{                                            // local dev -> server.py
+      res=await fetch(CONFIG.ENDPOINT_URL,{method:"POST",
+        headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
+    }
+    if(!res.ok)throw new Error("HTTP "+res.status);
+    if(status){status.textContent="✓ Your data has been saved. Thank you!";status.style.color="#8ff0b6";}
+  }catch(err){
+    if(status){status.innerHTML="⚠ Could not save to the server. Your data was downloaded to your device — please email the file to the researcher.";status.style.color="#ffb3b3";}
+    if(CONFIG.AUTO_DOWNLOAD_ON_FAIL)downloadData();
+  }
+}
+function downloadData(){
+  const blob=new Blob([JSON.stringify(buildPayload(),null,2)],{type:"application/json"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);
+  a.download=dataFilename();a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+
+/* ----------------------- DAY-2 RETURN SESSION ---------------------------- */
+// Same learn-and-quiz process as session 1 (no demographics; reuses the code).
+function startSession2(pid){
+  STATE.session=2;STATE.meta.participant_id=pid;
+  STATE.seed=hashStr(pid);RNG=mulberry32(STATE.seed);STATE.meta.randomization_seed=STATE.seed;
+  assignConditions();STATE.meta.condition_assignment_map={...STATE.conditionMap};
+  PROCTOR.currentPhase="consent2";
+  render(`<div class="card">
+    <div class="kicker">Day 2</div><h1>Welcome back</h1>
+    <p>Welcome back, participant <span class="code">${pid}</span>. Today you'll learn the words again
+    using the same process — type each word as you see and hear it, take the multiple-choice quiz,
+    and finish with a typed test. No video or audio is recorded; full-screen and tab activity are
+    logged for integrity.</p>
+    <div class="checkbox"><input type="checkbox" id="consent"><label for="consent">
+      I consent to complete this day-2 session.</label></div>
+    <button id="go" disabled>Enter full-screen &amp; start</button>
+  </div>`);
+  const cb=document.getElementById("consent"),go=document.getElementById("go");
+  cb.onchange=()=>go.disabled=!cb.checked;
+  go.onclick=()=>{STATE.meta.consent_ts=iso();requestFullscreen();startProctoring();startLearning();};
+}
+
+/* ------------------------------- ROUTER ---------------------------------- */
+(function init(){
+  const params=new URLSearchParams(window.location.search);
+  if(params.get("session")==="2"&&params.get("pid")){startSession2(params.get("pid").trim());}
+  else{screenConsent();}
+})();
+</script>
+</body>
+</html>

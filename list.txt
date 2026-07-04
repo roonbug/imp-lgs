@@ -1,0 +1,27 @@
+Jon 	Jon
+Mia 	Mia
+he 	kare
+she 	kanojo
+apple 	ringo
+egg 	tamago
+rice 	gohan
+cake 	keeki
+meat 	niku
+fish 	sakana
+chicken 	toriniku
+strawberry 	ichigo
+carrot 	ninjin
+book 	hon
+box 	hako
+chair 	isu
+stone 	ishi
+bag 	kaban
+key 	kagi
+clock 	tokei
+shoe 	kutsu
+umbrella 	kasa
+
+see 	miru
+move 	ugokasu
+carry 	hakobu
+take 	toru
