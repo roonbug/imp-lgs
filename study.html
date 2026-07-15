@@ -109,7 +109,7 @@ const CONFIG = {
   // LOCAL DEV: when DATAPIPE_EXPERIMENT_ID is empty, POST here (server.py).
   ENDPOINT_URL: "/api/data",
   LEARN_MAX_ROUNDS: 5,       // max rounds before we stop and move on regardless
-  MASTERY_CONSECUTIVE: 2,    // consecutive 100% typed-recall rounds = mastery (then offer exit)
+  MASTERY_ROUNDS: 2,         // total (not necessarily consecutive) 100% typed-recall rounds = mastery (then offer exit)
   N_MCQ_OPTIONS: 4,          // options in the multiple-choice recall
   RECALL_EDIT_TOLERANCE: 1,  // Levenshtein distance still scored correct (len>=4)
   REQUIRE_FULLSCREEN: true,  // request + monitor fullscreen
@@ -359,8 +359,8 @@ function screenInstructions(){
     the measure of what you recalled on your own. (Your responses and reaction times throughout are also
     recorded.)</p>
     <h2>What success looks like</h2>
-    <p>You've mastered the set when you type <b>every</b> word correctly from memory on that first attempt for
-    <b>${CONFIG.MASTERY_CONSECUTIVE} rounds in a row</b>. Rounds repeat until you reach that (up to
+    <p>You've mastered the set when you type <b>every</b> word correctly from memory on that first attempt on
+    <b>${CONFIG.MASTERY_ROUNDS} rounds total</b> (they don't have to be back-to-back). Rounds repeat until you reach that (up to
     ${CONFIG.LEARN_MAX_ROUNDS} rounds, then we wrap up regardless). Once you hit the goal you can finish or keep
     rehearsing — your choice.</p>
     <p class="muted">Please close other tabs, silence notifications, and stay in full-screen. Don't look up answers.</p>
@@ -491,7 +491,7 @@ function showRecallFeedback(item,sc,raw,next){
    The FIRST recall pass of the round (pass_no 1) is the graded score. Every recall
    pass is over the full set and logged with pass_no.
    Rounds auto-repeat until that first-pass recall scores 100% on
-   MASTERY_CONSECUTIVE rounds in a row (then the participant may exit or keep
+   MASTERY_ROUNDS rounds total (then the participant may exit or keep
    rehearsing), or until the LEARN_MAX_ROUNDS cap. Session 1 and the day-2 return
    use the same flow. */
 function startLearning(){
@@ -501,17 +501,17 @@ function startLearning(){
     <b>multiple-choice</b> quiz that keeps going until you get every word right, then
     <b>type the words from memory</b>. If you miss any, you'll practice them and test
     again until you get the whole set. We repeat the round until you can type them all
-    correctly ${CONFIG.MASTERY_CONSECUTIVE} rounds in a row (up to ${CONFIG.LEARN_MAX_ROUNDS} rounds).</p>
+    correctly on ${CONFIG.MASTERY_ROUNDS} rounds total (up to ${CONFIG.LEARN_MAX_ROUNDS} rounds).</p>
     <button id="go">Start</button></div>`);
   document.getElementById("go").onclick=()=>beginRound(1,0);
 }
-// round = 1-based; consec = how many consecutive prior rounds hit 100% typed recall.
-function beginRound(round,consec){
+// round = 1-based; perfect = how many prior rounds hit 100% typed recall (total, not consecutive).
+function beginRound(round,perfect){
   const introP="learn_round_"+round, testP="test_round_"+round;
   runEncode(ITEMS,introP,()=>                        // introduce, pass 1
     runEncode(ITEMS,introP,()=>                       // introduce, pass 2
       runRecognition(ITEMS,introP,()=>                // MCQ until every item correct
-        recallGate(round,consec,testP))));
+        recallGate(round,perfect,testP))));
 }
 
 /* Typed-recall gate with remediation. The FULL set is typed-recalled; misses
@@ -520,13 +520,13 @@ function beginRound(round,consec){
    always over the full set. Loops until a full-set pass is all correct, then
    afterRound(). Every recall pass is logged with pass_no; pass_no 1 is the first
    (pre-remediation) pass and is the graded score. */
-function recallGate(round,consec,testP){
+function recallGate(round,perfect,testP){
   const retryP="retry_round_"+round;
   let passNo=0;
   function fullRecall(){
     passNo++;
     runRecall(ITEMS,testP,{feedback:true,pass_no:passNo,
-      onDone:(wrong)=> wrong.length ? offerChoice(wrong) : afterRound(round,consec,testP)});
+      onDone:(wrong)=> wrong.length ? offerChoice(wrong) : afterRound(round,perfect,testP)});
   }
   function offerChoice(wrong){
     PROCTOR.currentPhase=retryP+"_choice";
@@ -596,21 +596,21 @@ function runEncode(items,phase,onDone){
   trial();
 }
 // Score this round's TYPED-RECALL pass and branch (auto-continue / mastery / cap).
-function afterRound(round,consec,testP){
+function afterRound(round,perfect,testP){
   PROCTOR.currentPhase="round_result";
   // Grade on the FIRST recall pass (pre-remediation); the gate loops later passes to 100%.
   const rec=STATE.trials.filter(t=>t.phase===testP&&t.test_type==="recall"&&t.pass_no===1);
   const correct=rec.filter(t=>t.correct).length, total=rec.length;
   const pct=total?Math.round(100*correct/total):0;
-  const newConsec = pct===100 ? consec+1 : 0;
-  const mastered = newConsec>=CONFIG.MASTERY_CONSECUTIVE;
+  const newPerfect = pct===100 ? perfect+1 : perfect;   // total perfect rounds (not reset on a miss)
+  const mastered = newPerfect>=CONFIG.MASTERY_ROUNDS;
   const cap = round>=CONFIG.LEARN_MAX_ROUNDS;
   const finish=()=>finishSession(STATE.session===1
       ? "Thank you! You've completed today's session."
       : "Thank you! You've completed the day-2 session.");
   let buttons, msg;
   if(mastered){
-    msg=`You've typed every word correctly ${newConsec} rounds in a row — you've got these! `
+    msg=`You've typed every word correctly on ${newPerfect} rounds — you've got these! `
        +`You can finish now, or keep rehearsing if you'd like.`;
     buttons=`<button id="more" class="ghost">Keep rehearsing</button>
              <button id="go">Finish</button>`;
@@ -618,7 +618,7 @@ function afterRound(round,consec,testP){
     msg=`That was the last round. Let's wrap up.`;
     buttons=`<button id="go">Finish</button>`;
   }else{
-    msg=(pct===100)?`Perfect this round! Do it once more to lock it in.`
+    msg=(pct===100)?`Perfect this round! That's ${newPerfect} of ${CONFIG.MASTERY_ROUNDS} — one more perfect round to go.`
                    :`Let's run through them again to lock them in.`;
     buttons=`<button id="go">Next round (${round+1} of ${CONFIG.LEARN_MAX_ROUNDS})</button>`;
   }
@@ -632,11 +632,11 @@ function afterRound(round,consec,testP){
   </div>`);
   if(mastered){
     document.getElementById("go").onclick=finish;
-    document.getElementById("more").onclick=()=>beginRound(round+1,newConsec);
+    document.getElementById("more").onclick=()=>beginRound(round+1,newPerfect);
   }else if(cap){
     document.getElementById("go").onclick=finish;
   }else{
-    document.getElementById("go").onclick=()=>beginRound(round+1,newConsec);
+    document.getElementById("go").onclick=()=>beginRound(round+1,newPerfect);
   }
 }
 
