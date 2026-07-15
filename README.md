@@ -69,27 +69,38 @@ given participant's randomization is reproducible and recoverable from the data.
 1. **Consent** (checkbox, timestamped).
 2. **Instructions + proctoring start** — requests full-screen, begins event logging.
 3. **Demographics** — participant code, age, native language, prior-Japanese rating.
-4. **Learning rounds (mastery loop).** Each round is three passes over the full set:
-   1. **Introduce** — the word is shown *with* its romaji and the native
+4. **Learning rounds (mastery loop).** Each round runs:
+   1. **Introduce (×2)** — the word is shown *with* its romaji and the native
       pronunciation **auto-plays** (replayable with a 🔊 button); the participant
       **types what they see and hear**. The answer is visible, but they must type it
       **correctly to advance** (a mismatch shows a hint and keeps them on the word);
-      their first-attempt accuracy is recorded.
-   2. **Multiple-choice** — pick the romaji for the word (4 options, distractors
-      from the same semantic category). After answering, the chosen option and the
-      correct option are highlighted (green/red) with a **Correct! / Correct answer**
-      message and the pronunciation.
+      their first-attempt accuracy is recorded. This runs as **two full passes** over
+      the set.
+   2. **Multiple-choice (until all correct)** — pick the romaji for the word (4
+      options, distractors from the same semantic category). After answering, the
+      chosen and correct options are highlighted (green/red) with a **Correct! /
+      Correct answer** message and the pronunciation. **Items answered incorrectly are
+      re-added and shown again in a later cycle**, so the pass does not end until every
+      item has been answered correctly at least once (review cycles are marked with
+      `pass_no`).
    3. **Typed recall** — type the romaji **from memory** (no romaji or audio hint on
       the prompt). Typo-tolerant scoring (Levenshtein ≤ 1 for words ≥ 4 letters).
       After answering, feedback shows whether it was correct — on a miss it shows
       what they typed and the correct answer, with the picture and pronunciation.
-      This pass is the **graded gate**.
+      The **first full-set pass is the graded gate**.
+      - **Remediation:** if that pass isn't all correct, the participant chooses to
+        re-practice **all items** or **just the ones they missed**. The chosen set
+        goes back through the multiple-choice pass only (step 2, until all correct),
+        and then the **full set is typed-recalled again** (recall is always over the
+        full set). This repeats until a full-set recall pass is entirely correct.
 
-   Rounds **auto-repeat** until the typed-recall pass scores **100% on
-   `MASTERY_CONSECUTIVE` (=2) rounds in a row** — at which point the participant may
-   **finish or keep rehearsing** — or until the **`LEARN_MAX_ROUNDS` (=5)** cap.
-   Audio plays on the introduce pass and on the answer-feedback cards, never on a
-   live prompt, so it can't reveal the answer before the participant responds.
+   Rounds **auto-repeat** until the **first full-set typed-recall pass** scores **100%
+   on `MASTERY_CONSECUTIVE` (=2) rounds in a row** — at which point the participant may
+   **finish or keep rehearsing** — or until the **`LEARN_MAX_ROUNDS` (=5)** cap. (The
+   remediation loop drives every round's *final* recall to 100%, so only the *first*
+   full-set pass of each round feeds the mastery/cap decision.) Audio plays on the
+   introduce pass and on the answer-feedback cards, never on a live prompt, so it can't
+   reveal the answer before the participant responds.
 5. **Debrief** — data uploaded (with download fallback); the participant is shown
    their code and a **day-2 return link**.
 
@@ -166,10 +177,15 @@ accidental early exit.
 trial_index, item_id, english, romaji, category, condition, has_image, test_type
 (introduce|recognition|recall), direction, prompt_onset_ts, response_ts,
 rt_ms, response_raw, response_normalized, correct, edit_distance, confidence_or_jol,
-mcq_options, mcq_choice, spacing_lag, focus_lost_during_trial, timestamp_iso`.
+mcq_options, mcq_choice, pass_no, spacing_lag, focus_lost_during_trial,
+timestamp_iso`.
 
-Within a round, the introduce and multiple-choice passes share phase
-`learn_round_<n>`; the typed-recall gate uses phase `test_round_<n>`.
+Within a round, the introduce and initial multiple-choice passes share phase
+`learn_round_<n>`; the typed-recall gate uses phase `test_round_<n>`; remediation
+multiple-choice uses `retry_round_<n>`. `pass_no` counts the pass within its runner —
+MCQ review cycles, and successive **full-set** recall passes in a round (every recall
+pass is over the full set). **The graded per-round score is the recall pass with
+`pass_no:1`** (the pre-remediation attempt).
 
 ## Configuration
 

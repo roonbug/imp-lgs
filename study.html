@@ -241,6 +241,7 @@ function pushTrial(rec){
     response_raw:rec.response_raw??null, response_normalized:rec.response_normalized??null,
     correct:rec.correct??null, edit_distance:rec.edit_distance??null,
     confidence_or_jol:rec.conf??null, mcq_options:rec.mcq_options??null, mcq_choice:rec.mcq_choice??null,
+    pass_no:rec.pass_no??null,
     spacing_lag:lag, focus_lost_during_trial:rec.focus_lost??false, timestamp_iso:iso()
   });
 }
@@ -363,10 +364,10 @@ function screenDemographics(){
 }
 
 /* --------- Generic typed-recall runner (used by the final recall test) ----- */
-function runRecall(items,phase,{feedback=false,withConfidence=false,onDone}){
-  const seq=shuffle(items); let i=0;
+function runRecall(items,phase,{feedback=false,withConfidence=false,pass_no=null,onDone}){
+  const seq=shuffle(items); let i=0; const wrong=[];
   function trial(){
-    if(i>=seq.length){onDone();return;}
+    if(i>=seq.length){onDone(wrong);return;}
     const item=seq[i]; PROCTOR.focusLost=false;
     render(`<div class="card">
       ${progressBar(i/seq.length)}
@@ -405,9 +406,10 @@ function runRecall(items,phase,{feedback=false,withConfidence=false,onDone}){
     function finalize(raw,conf){
       done=true;
       const sc=scoreRecall(raw,item.ro);const rt=Math.round(nowMs()-onset);
+      if(!sc.correct)wrong.push(item);
       pushTrial({phase,test_type:"recall",item,onset:Math.round(onset),rts:Math.round(nowMs()),
         rt_ms:rt,response_raw:raw,response_normalized:sc.response_normalized,correct:sc.correct,
-        edit_distance:sc.edit_distance,conf,focus_lost:PROCTOR.focusLost});
+        edit_distance:sc.edit_distance,conf,pass_no,focus_lost:PROCTOR.focusLost});
       if(feedback){showRecallFeedback(item,sc,raw,()=>{i++;trial();});}
       else{i++;trial();}
     }
@@ -432,31 +434,79 @@ function showRecallFeedback(item,sc,raw,next){
 }
 
 /* ===================== LEARNING LOOP (mastery-based) ======================
-   Each round has three passes over the full set:
-     1. INTRODUCE  — type the word while you see it (romaji shown) and hear it.
-     2. MULTIPLE-CHOICE — pick the romaji for the word (recognition practice).
+   Each round runs:
+     1. INTRODUCE (x2) — type the word while you see it (romaji shown) and hear
+        it. Two full passes over the set.
+     2. MULTIPLE-CHOICE — pick the romaji for the word. Items answered wrong are
+        re-shown until EVERY item has been answered correctly (see runRecognition).
      3. TYPED RECALL — type the romaji from memory (no romaji/audio shown). This
-        is the graded gate.
-   Rounds auto-repeat until the TYPED RECALL scores 100% on MASTERY_CONSECUTIVE
-   rounds in a row (then the participant may exit or keep rehearsing), or until the
-   LEARN_MAX_ROUNDS cap. Session 1 and the day-2 return use the same flow. */
+        full-set pass is the graded gate. If it isn't all correct, the participant
+        chooses to re-practice ALL items or JUST the ones they missed; that subset
+        goes back through MCQ (step 2) only, and then the FULL set is typed-recalled
+        again. Recall is always over the full set; this repeats until the full set is
+        all correct.
+   The FIRST recall pass of the round (pass_no 1) is the graded score. Every recall
+   pass is over the full set and logged with pass_no.
+   Rounds auto-repeat until that first-pass recall scores 100% on
+   MASTERY_CONSECUTIVE rounds in a row (then the participant may exit or keep
+   rehearsing), or until the LEARN_MAX_ROUNDS cap. Session 1 and the day-2 return
+   use the same flow. */
 function startLearning(){
   PROCTOR.currentPhase="learn_intro";
   render(`<div class="card"><div class="kicker">Learn the words</div><h1>Study &amp; quiz</h1>
-    <p>Each round you'll <b>type each word as you see and hear it</b>, take a quick
-    <b>multiple-choice</b> quiz, then <b>type the words from memory</b>. We repeat until you
-    can type them all correctly ${CONFIG.MASTERY_CONSECUTIVE} rounds in a row
-    (up to ${CONFIG.LEARN_MAX_ROUNDS} rounds).</p>
+    <p>Each round you'll <b>type each word as you see and hear it</b> (twice), take a
+    <b>multiple-choice</b> quiz that keeps going until you get every word right, then
+    <b>type the words from memory</b>. If you miss any, you'll practice them and test
+    again until you get the whole set. We repeat the round until you can type them all
+    correctly ${CONFIG.MASTERY_CONSECUTIVE} rounds in a row (up to ${CONFIG.LEARN_MAX_ROUNDS} rounds).</p>
     <button id="go">Start</button></div>`);
   document.getElementById("go").onclick=()=>beginRound(1,0);
 }
 // round = 1-based; consec = how many consecutive prior rounds hit 100% typed recall.
 function beginRound(round,consec){
   const introP="learn_round_"+round, testP="test_round_"+round;
-  runEncode(ITEMS,introP,()=>
-    runRecognition(ITEMS,introP,()=>
-      runRecall(ITEMS,testP,{feedback:true,withConfidence:false,
-        onDone:()=>afterRound(round,consec,testP)})));
+  runEncode(ITEMS,introP,()=>                        // introduce, pass 1
+    runEncode(ITEMS,introP,()=>                       // introduce, pass 2
+      runRecognition(ITEMS,introP,()=>                // MCQ until every item correct
+        recallGate(round,consec,testP))));
+}
+
+/* Typed-recall gate with remediation. The FULL set is typed-recalled; misses
+   trigger a choice (re-practice ALL vs JUST the missed items). The chosen set goes
+   through MCQ (mastery) only — then the FULL set is typed-recalled again. Recall is
+   always over the full set. Loops until a full-set pass is all correct, then
+   afterRound(). Every recall pass is logged with pass_no; pass_no 1 is the first
+   (pre-remediation) pass and is the graded score. */
+function recallGate(round,consec,testP){
+  const retryP="retry_round_"+round;
+  let passNo=0;
+  function fullRecall(){
+    passNo++;
+    runRecall(ITEMS,testP,{feedback:true,pass_no:passNo,
+      onDone:(wrong)=> wrong.length ? offerChoice(wrong) : afterRound(round,consec,testP)});
+  }
+  function offerChoice(wrong){
+    PROCTOR.currentPhase=retryP+"_choice";
+    render(`<div class="card">
+      <div class="kicker">Round ${round} · keep practicing</div>
+      <h1>Almost there</h1>
+      <p>You missed <b>${wrong.length}</b> of ${ITEMS.length} word${wrong.length===1?"":"s"}.
+      Let's practice before trying the whole set again. What would you like to review?</p>
+      <div class="spacer"></div>
+      <div class="row" style="justify-content:flex-end">
+        <button id="justwrong">Just the ${wrong.length} I missed</button>
+        <button id="all" class="ghost">All ${ITEMS.length} words</button>
+      </div>
+    </div>`);
+    document.getElementById("justwrong").onclick=()=>remediate(wrong);
+    document.getElementById("all").onclick=()=>remediate(ITEMS);
+  }
+  function remediate(set){
+    // MCQ (mastery) over the chosen set — the missed items or the full set — then
+    // the FULL set is typed-recalled again. Recall is always over the full set.
+    runRecognition(set,retryP,()=>fullRecall());
+  }
+  fullRecall();
 }
 // "Type what you see and hear": word + picture + romaji + audio are shown; the
 // participant types the romaji (an encoding exercise, so the answer is visible).
@@ -505,7 +555,8 @@ function runEncode(items,phase,onDone){
 // Score this round's TYPED-RECALL pass and branch (auto-continue / mastery / cap).
 function afterRound(round,consec,testP){
   PROCTOR.currentPhase="round_result";
-  const rec=STATE.trials.filter(t=>t.phase===testP&&t.test_type==="recall");
+  // Grade on the FIRST recall pass (pre-remediation); the gate loops later passes to 100%.
+  const rec=STATE.trials.filter(t=>t.phase===testP&&t.test_type==="recall"&&t.pass_no===1);
   const correct=rec.filter(t=>t.correct).length, total=rec.length;
   const pct=total?Math.round(100*correct/total):0;
   const newConsec = pct===100 ? consec+1 : 0;
@@ -546,20 +597,27 @@ function afterRound(round,consec,testP){
   }
 }
 
-/* ----------------------- RECOGNITION (MCQ) runner ------------------------ */
+/* ----------------------- RECOGNITION (MCQ) runner ------------------------
+   Mastery pass: items answered incorrectly are re-added and shown again in a
+   later cycle, so the pass doesn't end until EVERY item has been answered
+   correctly at least once. `queue` is the current cycle; misses collect in
+   `retry` and become the next cycle. */
 function runRecognition(items,phase,onDone){
   PROCTOR.currentPhase=phase+"_recognition";
-  const seq=shuffle(items);let i=0;
+  let queue=shuffle(items), retry=[], i=0, cycle=1;
   function trial(){
-    if(i>=seq.length){onDone();return;}
-    const item=seq[i];PROCTOR.focusLost=false;
+    if(i>=queue.length){
+      if(retry.length){queue=shuffle(retry);retry=[];i=0;cycle++;trial();return;}
+      onDone();return;
+    }
+    const item=queue[i];PROCTOR.focusLost=false;
     const sameCat=ITEMS.filter(x=>x.cat===item.cat&&x.id!==item.id);
     const pool=sameCat.length>=CONFIG.N_MCQ_OPTIONS-1?sameCat:ITEMS.filter(x=>x.id!==item.id);
     const distract=sample(pool,CONFIG.N_MCQ_OPTIONS-1).map(x=>x.ro);
     const options=shuffle([item.ro,...distract]);
     render(`<div class="card">
-      ${progressBar(i/seq.length)}
-      <div class="center muted">Multiple choice · ${i+1} / ${seq.length}</div>
+      ${progressBar(i/queue.length)}
+      <div class="center muted">Multiple choice · ${i+1} / ${queue.length}${cycle>1?" · review":""}</div>
       ${stimVisual(item,false)}
       <p class="center">Which is the Japanese (romaji) for <b>${item.en}</b>?</p>
       <div class="choices" id="choices">
@@ -580,8 +638,9 @@ function runRecognition(items,phase,onDone){
       if(!revealed){                                   // first click: grade + show feedback
         revealed=true;
         const rt=Math.round(nowMs()-onset);const correct=chosen===item.ro;
+        if(!correct)retry.push(item);                  // re-show this item in a later cycle
         pushTrial({phase,test_type:"recognition",item,onset:Math.round(onset),rts:Math.round(nowMs()),rt_ms:rt,
-          response_raw:chosen,correct,mcq_options:options,mcq_choice:chosen,focus_lost:PROCTOR.focusLost});
+          response_raw:chosen,correct,mcq_options:options,mcq_choice:chosen,pass_no:cycle,focus_lost:PROCTOR.focusLost});
         document.querySelectorAll(".choice").forEach(c=>{
           c.classList.add("reveal");
           if(c.dataset.v===item.ro)c.classList.add("correct");
@@ -606,7 +665,8 @@ function summarize(){
   // typed-recall gate phases, ordered by round number
   const testPhases=[...new Set(t.filter(x=>x.test_type==="recall"&&/^test_round_\d+$/.test(x.phase||"")).map(x=>x.phase))]
     .sort((a,b)=>(+a.match(/\d+$/))-(+b.match(/\d+$/)));
-  const scoreOf=ph=>{const r=t.filter(x=>x.phase===ph&&x.test_type==="recall");
+  // Score = the FIRST recall pass of each round (pre-remediation; matches the graded gate).
+  const scoreOf=ph=>{const r=t.filter(x=>x.phase===ph&&x.test_type==="recall"&&x.pass_no===1);
     return r.length?Math.round(100*r.filter(y=>y.correct).length/r.length):0;};
   const recallAcc=testPhases.length?scoreOf(testPhases[testPhases.length-1]):0; // last round
   const best=testPhases.reduce((m,ph)=>Math.max(m,scoreOf(ph)),0);
