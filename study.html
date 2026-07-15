@@ -71,6 +71,9 @@
   .code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:#0b0e1c;border:1px solid var(--line);
     padding:10px 12px;border-radius:10px;word-break:break-all;color:var(--accent2)}
   .banner{position:fixed;left:0;right:0;top:0;background:var(--bad);color:#fff;text-align:center;padding:10px;font-weight:700;z-index:50;display:none}
+  #phasetag{position:fixed;top:12px;right:14px;z-index:40;display:none;padding:6px 12px;border-radius:99px;
+    background:var(--panel2);border:1px solid var(--line);font-size:12px;font-weight:700;letter-spacing:.4px;
+    color:var(--muted);box-shadow:0 6px 18px rgba(0,0,0,.35)}
   ul.clean{color:var(--muted)} ul.clean li{margin:6px 0}
   .stat{display:flex;gap:18px;flex-wrap:wrap;margin:10px 0}
   .stat .box{flex:1;min-width:120px;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:14px;text-align:center}
@@ -261,7 +264,26 @@ function assignConditions(){
 
 /* ------------------------------- RENDER ---------------------------------- */
 const app=()=>document.getElementById("app");
-function render(html){app().innerHTML=html;window.scrollTo(0,0);}
+function render(html){app().innerHTML=html;window.scrollTo(0,0);updatePhaseTag();}
+// Friendly, participant-facing name for the current phase (shown in the top-right tag).
+function phaseLabel(p){
+  p=p||"";
+  const m=p.match(/_round_(\d+)/); const rd=m?`Round ${m[1]} · `:"";
+  if(/_introduce$/.test(p))       return rd+"Study";
+  if(/_recognition$/.test(p))     return rd+"Multiple choice";
+  if(/^test_round_\d+$/.test(p))  return rd+"Type from memory";
+  if(/_choice$/.test(p))          return rd+"Keep practicing";
+  return {consent:"Consent",consent2:"Consent",instructions:"Instructions",
+    demographics:"About you",learn_intro:"Get ready",round_result:"Round summary",
+    debrief:"Finished"}[p]||"";
+}
+function updatePhaseTag(){
+  let el=document.getElementById("phasetag");
+  if(!el){el=document.createElement("div");el.id="phasetag";document.body.appendChild(el);}
+  const label=phaseLabel(PROCTOR.currentPhase);
+  el.textContent=label;
+  el.style.display=label?"block":"none";
+}
 function progressBar(frac){return `<div class="progress"><i style="width:${Math.round(frac*100)}%"></i></div>`;}
 function stimVisual(item){
   // Memorization tool: always show the picture when one exists; items with no
@@ -315,13 +337,33 @@ function screenInstructions(){
   PROCTOR.currentPhase="instructions";
   render(`<div class="card">
     <div class="kicker">Before you start</div>
-    <h1>How it works</h1>
+    <h1>How the study works</h1>
+    <p>Your goal is to <b>memorize the Japanese (romaji) for ${ITEMS.length} English words</b> — most shown
+    with a picture and read aloud in Japanese. You'll learn them over a series of <b>rounds</b>, and each
+    round has the same three steps:</p>
     <ol class="clean" style="color:var(--muted)">
-      <li><b>Study</b> — you learn each English word with its Japanese (romaji) form, most with a picture.</li>
-      <li><b>Practice rounds</b> — short quizzes with feedback that help the words stick.</li>
-      <li><b>Final check</b> — typing and multiple-choice, to see what you've memorized.</li>
+      <li><b>See &amp; type (twice)</b> — each word appears with its romaji and plays aloud; you type what you
+      see and hear. You go through the whole set <b>twice</b>. This step is for studying — the answer is on
+      screen, so it isn't scored.</li>
+      <li><b>Multiple choice</b> — pick the correct romaji for each word (${CONFIG.N_MCQ_OPTIONS} options, with
+      feedback). Any word you get wrong is shown again later in the step, so it <b>keeps going until you've
+      answered every word correctly</b>.</li>
+      <li><b>Type from memory</b> — type the romaji with <b>no hints</b> (no romaji shown, no audio). This is the
+      step that counts. Small typos are still counted correct. If you miss any words, you'll choose to
+      re-practice <b>all</b> of them or <b>just the ones you missed</b> — that set goes through multiple choice
+      again, and then you type the <b>full set</b> from memory once more. This repeats until you get the whole
+      set right.</li>
     </ol>
-    <p>Please close other tabs, silence notifications, and remain in full-screen. Do not look up answers.</p>
+    <h2>How you're evaluated</h2>
+    <p>Each round, your score is your <b>first</b> "type from memory" attempt — before any re-practice. That is
+    the measure of what you recalled on your own. (Your responses and reaction times throughout are also
+    recorded.)</p>
+    <h2>What success looks like</h2>
+    <p>You've mastered the set when you type <b>every</b> word correctly from memory on that first attempt for
+    <b>${CONFIG.MASTERY_CONSECUTIVE} rounds in a row</b>. Rounds repeat until you reach that (up to
+    ${CONFIG.LEARN_MAX_ROUNDS} rounds, then we wrap up regardless). Once you hit the goal you can finish or keep
+    rehearsing — your choice.</p>
+    <p class="muted">Please close other tabs, silence notifications, and stay in full-screen. Don't look up answers.</p>
     <button id="go">Enter full-screen &amp; start</button>
   </div>`);
   document.getElementById("go").onclick=()=>{requestFullscreen();startProctoring();screenDemographics();};
@@ -365,6 +407,7 @@ function screenDemographics(){
 
 /* --------- Generic typed-recall runner (used by the final recall test) ----- */
 function runRecall(items,phase,{feedback=false,withConfidence=false,pass_no=null,onDone}){
+  PROCTOR.currentPhase=phase;
   const seq=shuffle(items); let i=0; const wrong=[];
   function trial(){
     if(i>=seq.length){onDone(wrong);return;}
