@@ -23,7 +23,7 @@ KANA = {
     "carrot": "にんじん", "book": "ほん", "box": "はこ", "chair": "いす",
     "stone": "いし", "bag": "かばん", "key": "かぎ", "clock": "とけい",
     "shoe": "くつ", "umbrella": "かさ", "see": "みる", "move": "うごかす",
-    "carry": "はこぶ", "take": "とる",
+    "drop": "おとす", "draw": "かく",
 }
 
 UA = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "

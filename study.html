@@ -115,11 +115,9 @@ const CONFIG = {
 
 /* --------------------------- STIMULUS TABLE ------------------------------ */
 /* english, romaji, category, image filename (null => text/avatar card).
-   Mirrors list.txt. Jon/Mia have no image (proper names). */
+   Mirrors list.txt. Items without an image fall back to a text/avatar card. */
 const ITEMS = [
-  {id:1,  en:"Jon",        ro:"Jon",      cat:"name",    img:null},
-  {id:2,  en:"Mia",        ro:"Mia",      cat:"name",    img:null},
-  {id:3,  en:"he",         ro:"kare",     cat:"pronoun", img:"he.jpg"},
+  {id:3,  en:"he",         ro:"kare",     cat:"pronoun", img:"he.png"},
   {id:4,  en:"she",        ro:"kanojo",   cat:"pronoun", img:"she.png"},
   {id:5,  en:"apple",      ro:"ringo",    cat:"food",    img:"apple_02s.jpg"},
   {id:6,  en:"egg",        ro:"tamago",   cat:"food",    img:"egg_01b.jpg"},
@@ -139,10 +137,10 @@ const ITEMS = [
   {id:20, en:"clock",      ro:"tokei",    cat:"object",  img:"clock_09n.jpg"},
   {id:21, en:"shoe",       ro:"kutsu",    cat:"object",  img:"shoe_09s.jpg"},
   {id:22, en:"umbrella",   ro:"kasa",     cat:"object",  img:"umbrella_12s.jpg"},
-  {id:24, en:"see",        ro:"miru",     cat:"verb",    img:"see.jpg"},
-  {id:25, en:"move",       ro:"ugokasu",  cat:"verb",    img:"move.jpg"},
-  {id:26, en:"carry",      ro:"hakobu",   cat:"verb",    img:"V_carry2.jpg"},
-  {id:27, en:"take",       ro:"toru",     cat:"verb",    img:"take.jpg"}
+  {id:24, en:"see",        ro:"miru",     cat:"verb",    img:"see.png"},
+  {id:25, en:"move",       ro:"ugokasu",  cat:"verb",    img:"move.png"},
+  {id:26, en:"drop",       ro:"otosu",    cat:"verb",    img:"drop.jpg"},
+  {id:27, en:"draw",       ro:"kaku",     cat:"verb",    img:"draw.jpg"}
 ];
 
 /* ------------------------------ UTILITIES -------------------------------- */
@@ -249,7 +247,7 @@ function pushTrial(rec){
 
 /* --------------------------- CONDITION ASSIGN ---------------------------- */
 // Within-subject dual-coding IV: half of the imageable items -> image, half -> text.
-// Balanced within each semantic category. Jon/Mia (no image) forced to text.
+// Balanced within each semantic category. Any item without an image is forced to text.
 function assignConditions(){
   const byCat={};
   ITEMS.forEach(it=>{(byCat[it.cat]=byCat[it.cat]||[]).push(it);});
@@ -265,8 +263,8 @@ const app=()=>document.getElementById("app");
 function render(html){app().innerHTML=html;window.scrollTo(0,0);}
 function progressBar(frac){return `<div class="progress"><i style="width:${Math.round(frac*100)}%"></i></div>`;}
 function stimVisual(item){
-  // Memorization tool: always show the picture when one exists; the two proper
-  // names (Jon/Mia) have no image and fall back to a letter card.
+  // Memorization tool: always show the picture when one exists; items with no
+  // image fall back to a letter card.
   if(item.img) return `<div class="imgwrap"><img src="img/${item.img}" alt=""></div>`;
   return `<div class="imgwrap"><div class="avatar">${item.en[0].toUpperCase()}</div></div>`;
 }
